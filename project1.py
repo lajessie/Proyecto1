@@ -15,31 +15,29 @@ def FrankeFuction(x, y):
     term2 = 0.75*np.exp(-((9*x+1)**2)/49.0 - 0.1*(9*y+1))
     term3 = 0.5*np.exp(-(9*x-7)**2/4.0 - 0.25*((9*y-3)**2))
     term4 = -0.2*np.exp(-(9*x-4)**2 - (9*y-7)**2)
-    noise = np.random.randn(numData,1)  ##Adding some noise 
-    return term1 + term2 + term3 + term4 + (0.01*noise)
+    return term1 + term2 + term3 + term4 
 
 #data
-numData = 100
+numData = 500
+noise = 0.01
 
 # x & y are the predictors
 x = np.random.rand(numData, 1)
 y = np.random.rand(numData, 1)
+
 z = FrankeFuction(x, y)
+# Adding noise to function
+#noise = np.random.randn(numData,1)  ##Adding some noise 
+for i in range(0,len(z)):
+    z[i] = z[i] + (noise*np.random.normal(0,1))
 
 dataset = pd.DataFrame({'predicto1': list(x), 'predicto2': list(y), 'outcome' : list(z)}, columns = ['predicto1', 'predicto2', 'outcome'])
 
 #print(dataset)
 indep = dataset[['predicto1', 'predicto2']]
 depen = dataset['outcome']
-"""
+
 #OLS
-[C,R] = np.meshgrid(x,y)
- 
-x_ = C.reshape(-1,1)
-y_ = R.reshape(-1,1)
-[n,m] = C.shape
-num_data = n*m
-"""
 d = pd.DataFrame(columns =['mse', 'r2', 'variance', 'bias' ], index=range(6))
     
 #perform a standard least square regression analysis using polynomials in x and y up to ﬁfth order
@@ -47,18 +45,16 @@ for i in range(0,6):
     poly = PolynomialFeatures(degree=i)
     data= poly.fit_transform(indep)
     
-    from sklearn.cross_validation import train_test_split
-    data_train, data_test, z_train, z_test = train_test_split(data, z, test_size=0.2)   
         
-    beta_ols = np.linalg.inv(data_train.T @ data_train) @ data_train.T @ z_train
-    z_hat= data_test@beta_ols
+    beta_ols = np.linalg.inv(data.T @ data) @ data.T @ z
+    z_hat= data@beta_ols
     
     #Using Sklearn
     regrGr = LinearRegression()
-    regrGr.fit(data_train, z_train)
+    regrGr.fit(data, z)
     intercept  = regrGr.intercept_
     beta = regrGr.coef_
-    depen_pred = regrGr.predict(data_test)
+    depen_pred = regrGr.predict(data)
     """
     mse = np.sum( (z_test - z_hat)**2 )/numData
     R2 = 1 - np.sum( (z_test - z_hat)**2 )/np.sum( (z - np.mean(z_hat))**2 )
@@ -66,9 +62,9 @@ for i in range(0,6):
     bias = np.sum( (z_test - np.mean(z_hat))**2 )/numData
     """
     
-    mse = np.mean( np.mean((z_test - z_hat)**2) )
-    R2 = np.sqrt(np.mean( np.mean((z_test - z_hat)**2) ))
-    bias = np.mean( (z_test - np.mean(z_hat))**2 )
+    mse = np.mean( np.mean((z - z_hat)**2) )
+    R2 = np.sqrt(np.mean( np.mean((z - z_hat)**2) ))
+    bias = np.mean( (z - np.mean(z_hat))**2 )
     var = np.mean( np.var(z_hat) )  
     
     #print('Beta parameters:', beta_ols)
@@ -77,11 +73,23 @@ for i in range(0,6):
     d.loc[i].bias = bias
     d.loc[i].variance = var
     
+
+"""
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+ax.scatter(x,y,z, c='r', marker='o')
+ax.set_ylabel('x axis')
+ax.set_ylabel('y axis')
+ax.set_ylabel('z axis')
+"""
+    
     
 print('--OLS analysis using polynomials in x and y up to ﬁfth order--')   
 print('Firs column is the polynomial degree') 
 print(d[1:6])
 
+from sklearn.cross_validation import train_test_split
+data_train, data_test, z_train, z_test = train_test_split(data, z, test_size=0.2) 
 #Evaluating again for a 5th order polynomial with different train sets in order to get confidence intervals
 from sklearn.utils import resample
 betas = pd.DataFrame(columns = ['b0', 'b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'b8','b9','b10','b11','b12', 'b13','b14','b15','b16','b17','b18','b19','b20'])
@@ -136,8 +144,6 @@ from sklearn.linear_model import Ridge
 from sklearn.cross_validation import train_test_split
 data_train, data_test, z_train, z_test = train_test_split(data, z, test_size=0.2)   
         
-    
-    
 
 #Set the different values of alpha to be tested
 alpha_ridge = [1e-15, 1e-10, 1e-8, 1e-4, 1e-3,1e-2, 1, 5, 10, 20]
@@ -206,7 +212,6 @@ print('R2:\t\t', R2_lasso)
 print('Variance:\t',variance_lasso)
 print('Bias:\t\t', bias_lasso)
 print('Var + Bias =', variance_lasso+ bias_lasso)
-
 
 """ Plotting the whole data 
 fig = plt.figure()
