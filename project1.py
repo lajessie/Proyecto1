@@ -213,13 +213,4 @@ print('Variance:\t',variance_lasso)
 print('Bias:\t\t', bias_lasso)
 print('Var + Bias =', variance_lasso+ bias_lasso)
 
-""" Plotting the whole data 
-fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
-ax.scatter(x,y,z, c='r', marker='o')
-ax.set_ylabel('x axis')
-ax.set_ylabel('y axis')
-ax.set_ylabel('z axis')
-plt.show()
-"""
 
