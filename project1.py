@@ -84,8 +84,8 @@ print(d[1:6])
 
 #Evaluating again for a 5th order polynomial with different train sets in order to get confidence intervals
 from sklearn.utils import resample
-betaMayor = []
-numExp = 10
+betas = pd.DataFrame(columns = ['b0', 'b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'b8','b9','b10','b11','b12', 'b13','b14','b15','b16','b17','b18','b19','b20'])
+numExp = 30
 MSE_ = 1.0
 poly5 = PolynomialFeatures(degree=5)
 data= poly5.fit_transform(indep)
@@ -97,7 +97,8 @@ for i in range(0,numExp): #Number of experiments
     z_pred = regr.predict(data_test)
     #Getting all the values of Betas
     betaS = regr.coef_
-    betaMayor.append(betaS)
+    val = pd.DataFrame(betaS)
+    betas = betas.append(val)
 
     #Calculating MSE, R2, Var and Bias for each experiment
     MSE = np.mean( np.mean((z_test - z_pred)**2) )
@@ -114,89 +115,96 @@ for i in range(0,numExp): #Number of experiments
         bias_ = bias
         
 #Getting a Matrix with all the values from B parameters of each experiment    
-#BetaMatrix = betaMayor.reshape(numExp, len(betaS))
-print('')
-print('Variances for each beta parameters: ', np.var(BetaMatrix,0) )
+#print(betas)
+print('------------------------------------')
 print('\nConfidence intervals of the parameters beta: (95%)')
-for i in range(0, len(betaS)):
-    print("B_", i, " {}".format(np.percentile(BetaMatrix[:,i], [2.5, 97.5])))
+for i in range(0, 21):
+    print("B_", i, " {}".format(np.percentile(betas[i], [2.5, 97.5])))
 
-print('\n--Selecting the model with less MSE--')
+print('\n----Selecting the model with less MSE-----')
 print('Beta parameters:', Beta_)
-print('Mean Squared Error (MSE): ', MSE_)
-print('Root Mean Squared Error:', R2_)
-print('Variance: ',var_)
-print('Bias:', bias_)
-print('Var + Bias =', var_ + bias_)
+print('MSE:\t\t', MSE_)
+print('R2:\t\t', R2_)
+print('Variance:\t',var_)
+print('Bias:\t\t', bias_)
+#print('Var + Bias =', var_ + bias_)
 print('----------------------------------')
 
 
 #**********---RIDGE REGRESSION--*******
 from sklearn.linear_model import Ridge
+from sklearn.cross_validation import train_test_split
+data_train, data_test, z_train, z_test = train_test_split(data, z, test_size=0.2)   
+        
+    
+    
+
 #Set the different values of alpha to be tested
 alpha_ridge = [1e-15, 1e-10, 1e-8, 1e-4, 1e-3,1e-2, 1, 5, 10, 20]
 #Fit the model
 MSE_R = 1
 #Loop to test each alpha value
 for i in range(10):
+    
+    #With the matrix
+    beta_olsRidge = np.linalg.inv(data_train.T @ data_train + alpha_ridge[i]*np.identity(21)) @ data_train.T @ z_train
+    z_hatRidge= data_test@beta_olsRidge
+    
+    #With Sklear
     ridgereg = Ridge(alpha=alpha_ridge[i], normalize=True)
-    indep_train_ = poly.fit_transform(indep_train)
-    ridgereg.fit(indep_train_, dep_train)
-    indep_test_ = poly.fit_transform(indep_test)
-    y_pred = ridgereg.predict(indep_test_)
-
-    intercept  = ridgereg.intercept_
-    betaRidge = ridgereg.coef_
-    MSE_ridge = np.mean( np.mean((depen - dep_pred)**2) )
-    R2_ridge = np.sqrt(np.mean( np.mean((depen - dep_pred)**2) ))
-    bias_ridge = np.mean( (depen - np.mean(dep_pred))**2 )
-    variance_ridge = np.mean( np.var(dep_pred) )   
+    ridgereg.fit(data_train, z_train)
+    y_pred = ridgereg.predict(data_test)
+    
+    
+    MSE_ridge = np.mean( np.mean((z_test - z_hatRidge)**2) )
+    R2_ridge = np.sqrt(np.mean( np.mean((z_test - z_hatRidge)**2) ))
+    bias_ridge = np.mean( (z_test - np.mean(z_hatRidge))**2 )
+    variance_ridge = np.mean( np.var(z_hatRidge) )   
 
     #Saving the values for the model with less MSE
     if (MSE_ridge <= MSE_R):
         alphaR= alpha_ridge[i]
-        Beta_R= betaRidge
+        Beta_R= beta_olsRidge
         MSE_R = MSE_ridge
         R2_R= R2_ridge
         var_R = variance_ridge
         bias_R = bias_ridge
-        
-print('Ridge Regresion')
-print('alpha:', alphaR)
+       
+print('-------Ridge Regresion--------')
+print('alpha:\t', alphaR)
 print('Beta parameters:', Beta_R)
-print('Mean Squared Error (MSE): ', MSE_R)
-print('Root Mean Squared Error:', R2_R)
-print('Variance: ',var_R)
-print('Bias:', bias_R)
+print('MSE:\t\t', MSE_R)
+print('R2:\t\t', R2_R)
+print('Variance:\t',var_R)
+print('Bias:\t\t', bias_R)
 print('Var + Bias =', var_R+ bias_R)
-
+print('----------------------------')
 
 
 #**********---LASSO REGRESSION--*******
 from sklearn.linear_model import Lasso
 alphas= np.logspace(-4, -1, 6)
 regr = Lasso()
-scores = [regr.set_params(alpha = alpha).fit(indep_train_, dep_train).score(indep_test_, dep_test) for alpha in alphas]
+scores = [regr.set_params(alpha = alpha).fit(data_train, z_train).score(data_test, z_test) for alpha in alphas]
 
 best_alpha = alphas[scores.index(max(scores))]
 regr.alpha = best_alpha
-regr.fit(indep_train_, dep_train)
+regr.fit(data_train, z_train)
 
-indep_test_ = poly.fit_transform(indep_test)
-y_pred = regr.predict(indep_test_)
-MSE_lasso = np.mean( np.mean((depen - dep_pred)**2) )
-R2_lasso = np.sqrt(np.mean( np.mean((depen - dep_pred)**2) ))
-bias_lasso = np.mean( (depen - np.mean(dep_pred))**2 )
-variance_lasso = np.mean( np.var(dep_pred) )   
+z_pred = regr.predict(data_test)
+MSE_lasso = np.mean( np.mean((z_test - z_pred)**2) )
+R2_lasso = np.sqrt(np.mean( np.mean((z_test - z_pred)**2) ))
+bias_lasso = np.mean( (z_test - np.mean(z_pred))**2 )
+variance_lasso = np.mean( np.var(z_pred) )   
     
        
-print('Lasso Regresion')
-print('alpha:', best_alpha)
+print('--------Lasso Regresion--------')
+print('alpha:\t', best_alpha)
 print('Beta parameters:', regr.coef_)
-print('Mean Squared Error (MSE): ', MSE_lasso)
-print('Root Mean Squared Error:', R2_lasso)
-print('Variance: ',variance_lasso)
-print('Bias:', bias_lasso)
+print('MSE:\t\t', MSE_lasso)
+print('R2:\t\t', R2_lasso)
+print('Variance:\t',variance_lasso)
+print('Bias:\t\t', bias_lasso)
 print('Var + Bias =', variance_lasso+ bias_lasso)
 
 
