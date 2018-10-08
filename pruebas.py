@@ -106,14 +106,17 @@ if __name__ == '__main__':
     # Adding noise to function
     for i in range(0,len(z)):
         z[i] = z[i] + (noise*np.random.normal(0,1))
+        
+    from sklearn.model_selection import train_test_split
+    data_train, data_test, z_train, z_test = train_test_split(data, z, test_size=0.1)   
     
     # Calculating parameters with OLS
     terrain1 = z.reshape(n,m)
-    beta_ols = np.linalg.inv(data.T @ data) @ data.T @ z
+    beta_ols = np.linalg.inv(data_train.T @ data_train) @ data_train.T @ z_train
 
     #Comprobando coeficientes de Sklearn
     regr = LinearRegression()
-    regr.fit(data, z)
+    regr.fit(data_train, z_train)
     betaSK = regr.coef_
     
     fitted_terrain = predict(rows, cols, beta_ols, poly_deg)
@@ -135,13 +138,7 @@ if __name__ == '__main__':
     #print("variance: %g"%np.var(fitted_terrain))
     plt.show()
     
-    #Returns mean of bootstrap samples
-    
-    def stat(data):
-        return np.mean(data)
-    
-    #Bootstrap algorithm
-    
+
     
     
     
