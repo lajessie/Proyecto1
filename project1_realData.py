@@ -1,3 +1,5 @@
+#Not finished
+
 import numpy as np
 from scipy.misc import imread
 from imageio import imread
